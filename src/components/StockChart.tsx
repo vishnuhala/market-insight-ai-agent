@@ -10,22 +10,61 @@ export const StockChart: React.FC<StockChartProps> = ({ symbol }) => {
   const [chartData, setChartData] = useState<any[]>([]);
   const [timeframe, setTimeframe] = useState('1D');
 
+  // Company-specific base prices for more realistic charts
+  const basePrices = {
+    'AAPL': 175.84,
+    'GOOGL': 138.21,
+    'MSFT': 412.33,
+    'TSLA': 248.91,
+    'NFLX': 578.45,
+    'AMZN': 178.30,
+    'META': 523.78,
+    'NVDA': 876.45
+  };
+
   useEffect(() => {
-    // Generate mock chart data
+    console.log(`Generating chart data for ${symbol}`);
+    
+    // Generate company-specific chart data
     const generateChartData = () => {
-      const basePrice = 175;
+      const basePrice = basePrices[symbol as keyof typeof basePrices] || 100 + Math.random() * 100;
       const data = [];
-      const points = timeframe === '1D' ? 24 : timeframe === '1W' ? 7 : 30;
+      const points = timeframe === '1D' ? 24 : timeframe === '1W' ? 7 : timeframe === '1M' ? 30 : timeframe === '3M' ? 90 : 365;
+      
+      // Company-specific volatility patterns
+      const volatility = {
+        'AAPL': 0.02,
+        'GOOGL': 0.025,
+        'MSFT': 0.018,
+        'TSLA': 0.05,
+        'NFLX': 0.03,
+        'AMZN': 0.025,
+        'META': 0.035,
+        'NVDA': 0.045
+      };
+      
+      const companyVolatility = volatility[symbol as keyof typeof volatility] || 0.025;
+      let currentPrice = basePrice;
       
       for (let i = 0; i < points; i++) {
-        const price = basePrice + (Math.random() - 0.5) * 20 + Math.sin(i / 10) * 10;
+        // More realistic price movement with trend
+        const trend = timeframe === '1Y' ? Math.sin(i / 50) * 0.002 : Math.sin(i / 10) * 0.001;
+        const randomChange = (Math.random() - 0.5) * companyVolatility * 2;
+        const priceChange = trend + randomChange;
+        
+        currentPrice = currentPrice * (1 + priceChange);
+        
         data.push({
           time: timeframe === '1D' 
             ? `${9 + Math.floor(i / 2)}:${i % 2 === 0 ? '00' : '30'}`
             : timeframe === '1W'
             ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i]
-            : `Day ${i + 1}`,
-          price: price.toFixed(2),
+            : timeframe === '1M'
+            ? `${i + 1}`
+            : timeframe === '3M'
+            ? `Day ${i + 1}`
+            : `${Math.floor(i / 30) + 1}M`,
+          price: currentPrice.toFixed(2),
           volume: Math.floor(Math.random() * 10000000) + 5000000
         });
       }
@@ -43,11 +82,30 @@ export const StockChart: React.FC<StockChartProps> = ({ symbol }) => {
           <p className="text-blue-400">
             Price: ${payload[0].value}
           </p>
+          <p className="text-slate-400 text-sm">
+            {symbol}
+          </p>
         </div>
       );
     }
     return null;
   };
+
+  // Calculate dynamic stats from chart data
+  const calculateStats = () => {
+    if (chartData.length === 0) return { high: 0, low: 0, volume: 0 };
+    
+    const prices = chartData.map(d => parseFloat(d.price));
+    const volumes = chartData.map(d => d.volume);
+    
+    return {
+      high: Math.max(...prices),
+      low: Math.min(...prices),
+      volume: volumes.reduce((acc, vol) => acc + vol, 0) / volumes.length
+    };
+  };
+
+  const stats = calculateStats();
 
   return (
     <div className="space-y-4">
@@ -99,16 +157,16 @@ export const StockChart: React.FC<StockChartProps> = ({ symbol }) => {
       {/* Chart Info */}
       <div className="grid grid-cols-3 gap-4 text-center">
         <div className="p-2 bg-slate-900/50 rounded">
-          <p className="text-slate-400 text-xs">Day High</p>
-          <p className="text-white font-medium">$178.45</p>
+          <p className="text-slate-400 text-xs">{timeframe} High</p>
+          <p className="text-white font-medium">${stats.high.toFixed(2)}</p>
         </div>
         <div className="p-2 bg-slate-900/50 rounded">
-          <p className="text-slate-400 text-xs">Day Low</p>
-          <p className="text-white font-medium">$173.21</p>
+          <p className="text-slate-400 text-xs">{timeframe} Low</p>
+          <p className="text-white font-medium">${stats.low.toFixed(2)}</p>
         </div>
         <div className="p-2 bg-slate-900/50 rounded">
           <p className="text-slate-400 text-xs">Avg Volume</p>
-          <p className="text-white font-medium">45.6M</p>
+          <p className="text-white font-medium">{(stats.volume / 1000000).toFixed(1)}M</p>
         </div>
       </div>
     </div>
