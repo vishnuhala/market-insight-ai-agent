@@ -23,30 +23,96 @@ export const PredictionPanel: React.FC<PredictionPanelProps> = ({ selectedCompan
     { name: 'Ensemble Model', accuracy: 88, status: 'active' }
   ]);
 
+  // Company-specific prediction logic
+  const generateCompanyPredictions = (symbol: string) => {
+    console.log(`Generating predictions for ${symbol}`);
+    
+    // Define company characteristics for more realistic predictions
+    const companyProfiles = {
+      'AAPL': { volatility: 0.3, growth: 0.8, stability: 0.9 },
+      'GOOGL': { volatility: 0.4, growth: 0.7, stability: 0.8 },
+      'MSFT': { volatility: 0.25, growth: 0.75, stability: 0.95 },
+      'TSLA': { volatility: 0.8, growth: 0.9, stability: 0.4 },
+      'NFLX': { volatility: 0.5, growth: 0.6, stability: 0.6 },
+      'AMZN': { volatility: 0.35, growth: 0.85, stability: 0.7 },
+      'META': { volatility: 0.6, growth: 0.7, stability: 0.5 },
+      'NVDA': { volatility: 0.7, growth: 0.95, stability: 0.6 }
+    };
+
+    // Default profile for unknown companies
+    const profile = companyProfiles[symbol as keyof typeof companyProfiles] || 
+      { volatility: 0.5, growth: 0.6, stability: 0.6 };
+
+    // Generate predictions based on company profile
+    const generatePrediction = (timeframe: string, baseVolatility: number) => {
+      const volatilityMultiplier = timeframe === 'nextDay' ? 1 : timeframe === 'nextWeek' ? 1.5 : 2;
+      const adjustedVolatility = baseVolatility * volatilityMultiplier;
+      
+      // Higher growth companies tend to have more upward bias
+      const upwardBias = profile.growth * 0.3;
+      const directionRandom = Math.random() + upwardBias;
+      
+      // Confidence based on stability (more stable = higher confidence)
+      const baseConfidence = 40 + (profile.stability * 40);
+      const confidenceVariation = (Math.random() - 0.5) * 20;
+      const confidence = Math.max(30, Math.min(95, baseConfidence + confidenceVariation));
+      
+      // Change magnitude based on volatility
+      const maxChange = timeframe === 'nextDay' ? 5 : timeframe === 'nextWeek' ? 12 : 20;
+      const changeVariation = (Math.random() - 0.5) * maxChange * adjustedVolatility;
+      
+      return {
+        direction: directionRandom > 0.5 ? 'up' : 'down',
+        confidence: Math.floor(confidence),
+        change: Number(changeVariation.toFixed(1))
+      };
+    };
+
+    return {
+      nextDay: generatePrediction('nextDay', profile.volatility),
+      nextWeek: generatePrediction('nextWeek', profile.volatility),
+      nextMonth: generatePrediction('nextMonth', profile.volatility)
+    };
+  };
+
+  // Update AI model accuracies based on company type
+  const updateModelAccuracies = (symbol: string) => {
+    const techStocks = ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'NFLX', 'META', 'NVDA'];
+    const isTechStock = techStocks.includes(symbol);
+    
+    setAiModels(prev => prev.map(model => {
+      let accuracyAdjustment = 0;
+      
+      // Different models perform better on different stock types
+      if (model.name === 'Transformer Model' && isTechStock) {
+        accuracyAdjustment = 3; // Transformer models excel with tech stocks
+      } else if (model.name === 'LSTM Neural Network' && symbol === 'TSLA') {
+        accuracyAdjustment = -5; // LSTM struggles with high volatility stocks like Tesla
+      } else if (model.name === 'Random Forest' && !isTechStock) {
+        accuracyAdjustment = 4; // Random Forest better with traditional stocks
+      }
+      
+      const baseAccuracy = model.name === 'LSTM Neural Network' ? 85 :
+                          model.name === 'Random Forest' ? 78 :
+                          model.name === 'Transformer Model' ? 92 : 88;
+      
+      return {
+        ...model,
+        accuracy: Math.max(60, Math.min(98, baseAccuracy + accuracyAdjustment + (Math.random() - 0.5) * 4))
+      };
+    }));
+  };
+
   useEffect(() => {
     if (selectedCompany) {
-      // Simulate prediction updates when company changes
-      const timeout = setTimeout(() => {
-        setPredictions({
-          nextDay: { 
-            direction: Math.random() > 0.5 ? 'up' : 'down', 
-            confidence: Math.floor(Math.random() * 30) + 60, 
-            change: (Math.random() - 0.5) * 4 
-          },
-          nextWeek: { 
-            direction: Math.random() > 0.5 ? 'up' : 'down', 
-            confidence: Math.floor(Math.random() * 30) + 50, 
-            change: (Math.random() - 0.5) * 8 
-          },
-          nextMonth: { 
-            direction: Math.random() > 0.5 ? 'up' : 'down', 
-            confidence: Math.floor(Math.random() * 30) + 40, 
-            change: (Math.random() - 0.5) * 12 
-          }
-        });
-      }, 1000);
-
-      return () => clearTimeout(timeout);
+      console.log(`Updating predictions for ${selectedCompany}`);
+      
+      // Generate new predictions for the selected company
+      const newPredictions = generateCompanyPredictions(selectedCompany);
+      setPredictions(newPredictions);
+      
+      // Update model accuracies
+      updateModelAccuracies(selectedCompany);
     }
   }, [selectedCompany]);
 
@@ -113,6 +179,20 @@ export const PredictionPanel: React.FC<PredictionPanelProps> = ({ selectedCompan
                   </div>
                 </div>
               ))}
+
+              {/* Company-specific insights */}
+              <div className="mt-4 p-3 bg-gradient-to-r from-blue-900/20 to-purple-900/20 rounded-lg border border-blue-500/20">
+                <p className="text-blue-400 text-xs font-medium mb-1">AI Insight</p>
+                <p className="text-slate-300 text-sm">
+                  {selectedCompany === 'TSLA' && "High volatility expected due to EV market dynamics and regulatory changes."}
+                  {selectedCompany === 'AAPL' && "Stable growth pattern with seasonal iPhone launch cycles affecting predictions."}
+                  {selectedCompany === 'GOOGL' && "AI developments and advertising market trends driving forecast models."}
+                  {selectedCompany === 'MSFT' && "Cloud computing growth and enterprise adoption supporting bullish outlook."}
+                  {selectedCompany === 'NFLX' && "Streaming competition and content investment cycles influencing volatility."}
+                  {!['TSLA', 'AAPL', 'GOOGL', 'MSFT', 'NFLX'].includes(selectedCompany) && 
+                   "Analysis based on sector trends, market sentiment, and technical indicators."}
+                </p>
+              </div>
             </>
           ) : (
             <div className="text-center py-8">
@@ -147,7 +227,7 @@ export const PredictionPanel: React.FC<PredictionPanelProps> = ({ selectedCompan
               
               <div className="flex items-center justify-between">
                 <span className="text-slate-400 text-xs">Accuracy</span>
-                <span className="text-white text-sm font-medium">{model.accuracy}%</span>
+                <span className="text-white text-sm font-medium">{model.accuracy.toFixed(0)}%</span>
               </div>
               
               <Progress value={model.accuracy} className="h-1 mt-1" />
@@ -170,12 +250,18 @@ export const PredictionPanel: React.FC<PredictionPanelProps> = ({ selectedCompan
             
             <div className="flex justify-between items-center">
               <span className="text-slate-400 text-sm">Social Sentiment</span>
-              <span className="text-blue-400 font-medium">Bullish</span>
+              <span className="text-blue-400 font-medium">
+                {selectedCompany === 'TSLA' ? 'Very Bullish' : 
+                 selectedCompany === 'AAPL' ? 'Bullish' : 
+                 selectedCompany ? 'Neutral' : 'Bullish'}
+              </span>
             </div>
             
             <div className="flex justify-between items-center">
               <span className="text-slate-400 text-sm">News Sentiment</span>
-              <span className="text-green-400 font-medium">Positive</span>
+              <span className="text-green-400 font-medium">
+                {selectedCompany === 'META' ? 'Mixed' : 'Positive'}
+              </span>
             </div>
           </div>
         </CardContent>
