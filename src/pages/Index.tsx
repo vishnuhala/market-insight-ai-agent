@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { SearchBar } from '../components/SearchBar';
+import { SearchResults } from '../components/SearchResults';
 import { MarketOverview } from '../components/MarketOverview';
 import { CompanyDetail } from '../components/CompanyDetail';
 import { AgentSystem } from '../components/AgentSystem';
@@ -8,11 +9,36 @@ import { PredictionPanel } from '../components/PredictionPanel';
 import { RealTimeData } from '../components/RealTimeData';
 import { toast } from 'sonner';
 
+interface SearchResult {
+  symbol: string;
+  name: string;
+  price?: number;
+  change?: number;
+  changePercent?: number;
+  exchange?: string;
+  type: 'stock' | 'crypto' | 'forex';
+}
+
 const Index = () => {
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [marketData, setMarketData] = useState(null);
+
+  // Mock database of companies for search
+  const mockCompanies: SearchResult[] = [
+    { symbol: 'AAPL', name: 'Apple Inc.', price: 175.84, change: 2.34, changePercent: 1.35, exchange: 'NASDAQ', type: 'stock' },
+    { symbol: 'GOOGL', name: 'Alphabet Inc.', price: 138.21, change: -1.45, changePercent: -1.04, exchange: 'NASDAQ', type: 'stock' },
+    { symbol: 'MSFT', name: 'Microsoft Corporation', price: 378.85, change: 4.23, changePercent: 1.13, exchange: 'NASDAQ', type: 'stock' },
+    { symbol: 'TSLA', name: 'Tesla Inc.', price: 248.50, change: -8.34, changePercent: -3.25, exchange: 'NASDAQ', type: 'stock' },
+    { symbol: 'NVDA', name: 'NVIDIA Corporation', price: 875.30, change: 15.67, changePercent: 1.82, exchange: 'NASDAQ', type: 'stock' },
+    { symbol: 'AMZN', name: 'Amazon.com Inc.', price: 145.86, change: 0.92, changePercent: 0.63, exchange: 'NASDAQ', type: 'stock' },
+    { symbol: 'META', name: 'Meta Platforms Inc.', price: 487.22, change: 12.45, changePercent: 2.62, exchange: 'NASDAQ', type: 'stock' },
+    { symbol: 'BTC-USD', name: 'Bitcoin', price: 42350.00, change: 1250.30, changePercent: 3.04, exchange: 'Crypto', type: 'crypto' },
+    { symbol: 'ETH-USD', name: 'Ethereum', price: 2645.75, change: -45.20, changePercent: -1.68, exchange: 'Crypto', type: 'crypto' },
+    { symbol: 'EURUSD', name: 'Euro / US Dollar', price: 1.0875, change: 0.0012, changePercent: 0.11, exchange: 'Forex', type: 'forex' },
+  ];
 
   useEffect(() => {
     // Initialize the application
@@ -23,6 +49,8 @@ const Index = () => {
 
   const handleCompanySelect = (symbol: string) => {
     setSelectedCompany(symbol);
+    setSearchQuery(''); // Clear search when selecting a company
+    setSearchResults([]); // Clear search results
     toast.info(`Analyzing ${symbol}`, {
       description: "AI agents gathering comprehensive data..."
     });
@@ -32,14 +60,24 @@ const Index = () => {
     setSearchQuery(query);
     setIsLoading(true);
     
-    // Simulate AI processing
+    // Simulate API call delay
     setTimeout(() => {
+      // Filter companies based on search query
+      const filteredResults = mockCompanies.filter(company => 
+        company.symbol.toLowerCase().includes(query.toLowerCase()) ||
+        company.name.toLowerCase().includes(query.toLowerCase())
+      );
+      
+      setSearchResults(filteredResults);
       setIsLoading(false);
+      
       toast.success("Search completed", {
-        description: `Found results for "${query}"`
+        description: `Found ${filteredResults.length} results for "${query}"`
       });
-    }, 1500);
+    }, 1000);
   };
+
+  const showSearchResults = searchQuery && !selectedCompany;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
@@ -81,6 +119,13 @@ const Index = () => {
               <CompanyDetail 
                 symbol={selectedCompany} 
                 onBack={() => setSelectedCompany(null)} 
+              />
+            ) : showSearchResults ? (
+              <SearchResults 
+                query={searchQuery}
+                results={searchResults}
+                onCompanySelect={handleCompanySelect}
+                isLoading={isLoading}
               />
             ) : (
               <MarketOverview onCompanySelect={handleCompanySelect} />
