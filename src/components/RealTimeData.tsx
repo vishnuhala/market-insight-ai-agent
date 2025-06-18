@@ -17,6 +17,15 @@ export const RealTimeData: React.FC = () => {
     oil: 78.90
   });
 
+  // Check for existing API key on mount
+  useEffect(() => {
+    const storedApiKey = localStorage.getItem('stockApiKey');
+    if (storedApiKey) {
+      setApiKey(storedApiKey);
+      setIsConnected(true);
+    }
+  }, []);
+
   useEffect(() => {
     // Simulate real-time data updates
     const interval = setInterval(() => {
@@ -33,11 +42,27 @@ export const RealTimeData: React.FC = () => {
 
   const handleApiKeySubmit = () => {
     if (apiKey.trim()) {
+      // Store API key in localStorage
+      localStorage.setItem('stockApiKey', apiKey.trim());
       setIsConnected(true);
+      
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new Event('storage'));
+      
       toast.success("Real-time data connected!", {
-        description: "Live market feeds are now active"
+        description: "Live market feeds are now active. You can now search for any company!"
       });
     }
+  };
+
+  const handleDisconnect = () => {
+    localStorage.removeItem('stockApiKey');
+    setApiKey('');
+    setIsConnected(false);
+    window.dispatchEvent(new Event('storage'));
+    toast.info("Disconnected from live data", {
+      description: "Switched back to demo mode"
+    });
   };
 
   return (
@@ -58,11 +83,11 @@ export const RealTimeData: React.FC = () => {
             </Badge>
           </div>
           
-          {!isConnected && (
+          {!isConnected ? (
             <div className="space-y-2">
               <Input
                 type="password"
-                placeholder="Enter your API key (e.g., Alpha Vantage, IEX)"
+                placeholder="Enter Alpha Vantage API key"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
                 className="bg-slate-900/50 border-slate-600 text-white"
@@ -70,12 +95,33 @@ export const RealTimeData: React.FC = () => {
               <Button 
                 onClick={handleApiKeySubmit}
                 className="w-full bg-blue-600 hover:bg-blue-700"
+                disabled={!apiKey.trim()}
               >
                 Connect Live Data
               </Button>
               <p className="text-xs text-slate-400">
-                Demo mode active. Enter API key for real data.
+                Get your free API key from{' '}
+                <a 
+                  href="https://www.alphavantage.co/support/#api-key" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:underline"
+                >
+                  Alpha Vantage
+                </a>
               </p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-green-400 text-sm">✓ Live data connected</p>
+              <p className="text-xs text-slate-400">Search for any company symbol to get real-time data</p>
+              <Button 
+                onClick={handleDisconnect}
+                variant="outline"
+                className="w-full border-slate-600 text-slate-300 hover:bg-slate-700"
+              >
+                Disconnect
+              </Button>
             </div>
           )}
         </CardContent>
@@ -134,7 +180,7 @@ export const RealTimeData: React.FC = () => {
         </CardHeader>
         <CardContent>
           <div className="space-y-2 text-xs text-slate-400">
-            <p>• Alpha Vantage - Stock Data</p>
+            <p>• Alpha Vantage - Stock Data {isConnected && '✓'}</p>
             <p>• IEX Cloud - Real-time Quotes</p>
             <p>• Polygon.io - Market Data</p>
             <p>• NewsAPI - Financial News</p>
