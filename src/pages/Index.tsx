@@ -7,6 +7,9 @@ import { CompanyDetail } from '../components/CompanyDetail';
 import { AgentSystem } from '../components/AgentSystem';
 import { PredictionPanel } from '../components/PredictionPanel';
 import { RealTimeData } from '../components/RealTimeData';
+import { AuthModal } from '../components/AuthModal';
+import { Button } from '@/components/ui/button';
+import { LogOut, User } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface SearchResult {
@@ -19,6 +22,13 @@ interface SearchResult {
   type: 'stock' | 'crypto' | 'forex';
 }
 
+interface User {
+  id: string;
+  email: string;
+  fullName: string;
+  createdAt: string;
+}
+
 const Index = () => {
   const [selectedCompany, setSelectedCompany] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -26,6 +36,18 @@ const Index = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [marketData, setMarketData] = useState(null);
   const [apiKey, setApiKey] = useState('');
+  const [user, setUser] = useState<User | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Check for existing user session
+  useEffect(() => {
+    const storedUser = localStorage.getItem('stockmind_user');
+    const authToken = localStorage.getItem('stockmind_auth_token');
+    
+    if (storedUser && authToken) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
 
   // Get API key from localStorage or state
   useEffect(() => {
@@ -146,6 +168,20 @@ const Index = () => {
     }
   };
 
+  const handleAuthSuccess = (userData: User) => {
+    setUser(userData);
+    toast.success(`Welcome ${userData.fullName}!`, {
+      description: "You can now access all features"
+    });
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('stockmind_user');
+    localStorage.removeItem('stockmind_auth_token');
+    setUser(null);
+    toast.success("Logged out successfully");
+  };
+
   // Listen for API key updates from RealTimeData component
   useEffect(() => {
     const handleStorageChange = () => {
@@ -182,6 +218,32 @@ const Index = () => {
                 <div className={`h-2 w-2 ${apiKey ? 'bg-green-500' : 'bg-yellow-500'} rounded-full animate-pulse`}></div>
                 <span>{apiKey ? 'Market Open' : 'Demo Mode'}</span>
               </div>
+              
+              {user ? (
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-2 text-white">
+                    <User className="h-4 w-4" />
+                    <span className="text-sm">{user.fullName}</span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleLogout}
+                    className="bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  onClick={() => setShowAuthModal(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Sign In
+                </Button>
+              )}
+              
               <SearchBar onSearch={handleSearch} isLoading={isLoading} />
             </div>
           </div>
@@ -221,6 +283,13 @@ const Index = () => {
           </div>
         </div>
       </div>
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onAuthSuccess={handleAuthSuccess}
+      />
     </div>
   );
 };

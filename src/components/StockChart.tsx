@@ -4,75 +4,71 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tool
 
 interface StockChartProps {
   symbol: string;
+  currentPrice?: number;
 }
 
-export const StockChart: React.FC<StockChartProps> = ({ symbol }) => {
+export const StockChart: React.FC<StockChartProps> = ({ symbol, currentPrice }) => {
   const [chartData, setChartData] = useState<any[]>([]);
   const [timeframe, setTimeframe] = useState('1D');
 
-  // Company-specific base prices for more realistic charts
-  const basePrices = {
-    'AAPL': 175.84,
-    'GOOGL': 138.21,
-    'MSFT': 412.33,
-    'TSLA': 248.91,
-    'NFLX': 578.45,
-    'AMZN': 178.30,
-    'META': 523.78,
-    'NVDA': 876.45
-  };
-
   useEffect(() => {
-    console.log(`Generating chart data for ${symbol}`);
+    console.log(`Generating chart data for ${symbol} with current price ${currentPrice}`);
     
-    // Generate company-specific chart data
+    // Generate realistic chart data based on current price
     const generateChartData = () => {
-      const basePrice = basePrices[symbol as keyof typeof basePrices] || 100 + Math.random() * 100;
+      const basePrice = currentPrice || 100;
       const data = [];
       const points = timeframe === '1D' ? 24 : timeframe === '1W' ? 7 : timeframe === '1M' ? 30 : timeframe === '3M' ? 90 : 365;
       
-      // Company-specific volatility patterns
-      const volatility = {
-        'AAPL': 0.02,
-        'GOOGL': 0.025,
-        'MSFT': 0.018,
-        'TSLA': 0.05,
-        'NFLX': 0.03,
-        'AMZN': 0.025,
-        'META': 0.035,
-        'NVDA': 0.045
-      };
+      // Determine volatility based on symbol and current market conditions
+      let volatility = 0.025; // default
       
-      const companyVolatility = volatility[symbol as keyof typeof volatility] || 0.025;
-      let currentPrice = basePrice;
+      if (symbol.includes('.BSE') || symbol.includes('.NSE')) {
+        volatility = 0.035; // Indian stocks tend to be more volatile
+      }
       
-      for (let i = 0; i < points; i++) {
-        // More realistic price movement with trend
-        const trend = timeframe === '1Y' ? Math.sin(i / 50) * 0.002 : Math.sin(i / 10) * 0.001;
-        const randomChange = (Math.random() - 0.5) * companyVolatility * 2;
-        const priceChange = trend + randomChange;
+      if (symbol.includes('CRYPTO') || symbol.toLowerCase().includes('bitcoin')) {
+        volatility = 0.08; // Crypto is highly volatile
+      }
+      
+      let currentPricePoint = basePrice;
+      
+      // Generate historical data working backwards from current price
+      for (let i = points - 1; i >= 0; i--) {
+        const isCurrentPoint = i === points - 1;
         
-        currentPrice = currentPrice * (1 + priceChange);
+        if (isCurrentPoint) {
+          // Use actual current price for the latest point
+          currentPricePoint = basePrice;
+        } else {
+          // Generate realistic historical movement
+          const trend = timeframe === '1Y' ? Math.sin(i / 50) * 0.002 : Math.sin(i / 10) * 0.001;
+          const randomChange = (Math.random() - 0.5) * volatility * 2;
+          const priceChange = trend + randomChange;
+          
+          currentPricePoint = currentPricePoint * (1 - priceChange);
+        }
         
-        data.push({
+        data.unshift({
           time: timeframe === '1D' 
-            ? `${9 + Math.floor(i / 2)}:${i % 2 === 0 ? '00' : '30'}`
+            ? `${9 + Math.floor((points - 1 - i) / 2)}:${(points - 1 - i) % 2 === 0 ? '00' : '30'}`
             : timeframe === '1W'
-            ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i]
+            ? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][points - 1 - i] || `Day ${points - i}`
             : timeframe === '1M'
-            ? `${i + 1}`
+            ? `${points - i}`
             : timeframe === '3M'
-            ? `Day ${i + 1}`
-            : `${Math.floor(i / 30) + 1}M`,
-          price: currentPrice.toFixed(2),
-          volume: Math.floor(Math.random() * 10000000) + 5000000
+            ? `Day ${points - i}`
+            : `${Math.floor((points - i) / 30) + 1}M`,
+          price: currentPricePoint.toFixed(2),
+          volume: Math.floor(Math.random() * 10000000) + 1000000
         });
       }
+      
       return data;
     };
 
     setChartData(generateChartData());
-  }, [symbol, timeframe]);
+  }, [symbol, timeframe, currentPrice]);
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
