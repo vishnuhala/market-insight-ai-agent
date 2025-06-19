@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { TrendingUp, TrendingDown, BarChart } from 'lucide-react';
+import { TrendingUp, TrendingDown, BarChart, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Stock {
@@ -24,6 +24,8 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ onCompanySelect 
   const [stocks, setStocks] = useState<Stock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [apiKey, setApiKey] = useState('');
+  const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [rateLimitHit, setRateLimitHit] = useState(false);
 
   // Get API key from localStorage
   useEffect(() => {
@@ -39,6 +41,7 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ onCompanySelect 
       const newApiKey = localStorage.getItem('stockApiKey');
       if (newApiKey) {
         setApiKey(newApiKey);
+        setRateLimitHit(false); // Reset rate limit when new API key is added
       }
     };
 
@@ -46,38 +49,7 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ onCompanySelect 
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  // Fetch real stock data
-  const fetchStockData = async (symbol: string, name: string) => {
-    if (!apiKey) {
-      return null;
-    }
-
-    try {
-      const response = await fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`);
-      const data = await response.json();
-      
-      console.log(`Fetching data for ${symbol}:`, data);
-
-      if (data['Global Quote']) {
-        const quote = data['Global Quote'];
-        return {
-          symbol,
-          name,
-          price: parseFloat(quote['05. price']),
-          change: parseFloat(quote['09. change']),
-          changePercent: parseFloat(quote['10. change percent'].replace('%', '')),
-          volume: parseInt(quote['06. volume']),
-          marketCap: getMarketCap(symbol) // Helper function for market cap
-        };
-      }
-      return null;
-    } catch (error) {
-      console.error(`Error fetching data for ${symbol}:`, error);
-      return null;
-    }
-  };
-
-  // Helper function to get approximate market cap (since Alpha Vantage free tier doesn't include this)
+  // Helper function to get approximate market cap
   const getMarketCap = (symbol: string): string => {
     const marketCaps: { [key: string]: string } = {
       'AAPL': '2.8T',
@@ -90,142 +62,197 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ onCompanySelect 
     return marketCaps[symbol] || 'N/A';
   };
 
-  // Load initial stock data
-  useEffect(() => {
-    const loadStocks = async () => {
-      if (!apiKey) {
-        // Use fallback data when no API key
-        setStocks([
-          {
-            symbol: 'AAPL',
-            name: 'Apple Inc.',
-            price: 175.84,
-            change: 2.34,
-            changePercent: 1.35,
-            volume: 45678900,
-            marketCap: '2.8T'
-          },
-          {
-            symbol: 'GOOGL',
-            name: 'Alphabet Inc.',
-            price: 138.21,
-            change: -1.45,
-            changePercent: -1.04,
-            volume: 23456789,
-            marketCap: '1.7T'
-          },
-          {
-            symbol: 'MSFT',
-            name: 'Microsoft Corp.',
-            price: 378.85,
-            change: 4.23,
-            changePercent: 1.13,
-            volume: 34567890,
-            marketCap: '2.9T'
-          },
-          {
-            symbol: 'TSLA',
-            name: 'Tesla Inc.',
-            price: 248.50,
-            change: -8.34,
-            changePercent: -3.25,
-            volume: 67890123,
-            marketCap: '789B'
-          },
-          {
-            symbol: 'NVDA',
-            name: 'NVIDIA Corp.',
-            price: 875.30,
-            change: 15.67,
-            changePercent: 1.82,
-            volume: 45123678,
-            marketCap: '2.1T'
-          },
-          {
-            symbol: 'AMZN',
-            name: 'Amazon.com Inc.',
-            price: 145.86,
-            change: 0.92,
-            changePercent: 0.63,
-            volume: 28901234,
-            marketCap: '1.5T'
-          }
-        ]);
-        setIsLoading(false);
-        return;
+  // Fetch real stock data with rate limiting detection
+  const fetchStockData = async (symbol: string, name: string) => {
+    if (!apiKey || rateLimitHit) {
+      return null;
+    }
+
+    try {
+      const response = await fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`);
+      const data = await response.json();
+      
+      console.log(`Fetching data for ${symbol}:`, data);
+
+      // Check for rate limit
+      if (data['Information'] && data['Information'].includes('rate limit')) {
+        console.log('Rate limit detected');
+        setRateLimitHit(true);
+        toast.error("API Rate Limit Reached", {
+          description: "Using cached data. Upgrade your Alpha Vantage plan for more requests."
+        });
+        return null;
       }
 
-      setIsLoading(true);
-      
-      const companies = [
-        { symbol: 'AAPL', name: 'Apple Inc.' },
-        { symbol: 'GOOGL', name: 'Alphabet Inc.' },
-        { symbol: 'MSFT', name: 'Microsoft Corp.' },
-        { symbol: 'TSLA', name: 'Tesla Inc.' },
-        { symbol: 'NVDA', name: 'NVIDIA Corp.' },
-        { symbol: 'AMZN', name: 'Amazon.com Inc.' }
-      ];
+      if (data['Error Message']) {
+        throw new Error(data['Error Message']);
+      }
 
-      try {
-        const stockPromises = companies.map(company => 
-          fetchStockData(company.symbol, company.name)
-        );
+      if (data['Global Quote']) {
+        const quote = data['Global Quote'];
+        return {
+          symbol,
+          name,
+          price: parseFloat(quote['05. price']),
+          change: parseFloat(quote['09. change']),
+          changePercent: parseFloat(quote['10. change percent'].replace('%', '')),
+          volume: parseInt(quote['06. volume']),
+          marketCap: getMarketCap(symbol)
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error(`Error fetching data for ${symbol}:`, error);
+      return null;
+    }
+  };
+
+  // Load initial stock data
+  const loadStocks = async (showToast: boolean = true) => {
+    if (!apiKey) {
+      // Use fallback data when no API key
+      setStocks([
+        {
+          symbol: 'AAPL',
+          name: 'Apple Inc.',
+          price: 175.84,
+          change: 2.34,
+          changePercent: 1.35,
+          volume: 45678900,
+          marketCap: '2.8T'
+        },
+        {
+          symbol: 'GOOGL',
+          name: 'Alphabet Inc.',
+          price: 138.21,
+          change: -1.45,
+          changePercent: -1.04,
+          volume: 23456789,
+          marketCap: '1.7T'
+        },
+        {
+          symbol: 'MSFT',
+          name: 'Microsoft Corp.',
+          price: 378.85,
+          change: 4.23,
+          changePercent: 1.13,
+          volume: 34567890,
+          marketCap: '2.9T'
+        },
+        {
+          symbol: 'TSLA',
+          name: 'Tesla Inc.',
+          price: 248.50,
+          change: -8.34,
+          changePercent: -3.25,
+          volume: 67890123,
+          marketCap: '789B'
+        },
+        {
+          symbol: 'NVDA',
+          name: 'NVIDIA Corp.',
+          price: 875.30,
+          change: 15.67,
+          changePercent: 1.82,
+          volume: 45123678,
+          marketCap: '2.1T'
+        },
+        {
+          symbol: 'AMZN',
+          name: 'Amazon.com Inc.',
+          price: 145.86,
+          change: 0.92,
+          changePercent: 0.63,
+          volume: 28901234,
+          marketCap: '1.5T'
+        }
+      ]);
+      setIsLoading(false);
+      return;
+    }
+
+    if (rateLimitHit) {
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    
+    const companies = [
+      { symbol: 'AAPL', name: 'Apple Inc.' },
+      { symbol: 'GOOGL', name: 'Alphabet Inc.' },
+      { symbol: 'MSFT', name: 'Microsoft Corp.' },
+      { symbol: 'TSLA', name: 'Tesla Inc.' },
+      { symbol: 'NVDA', name: 'NVIDIA Corp.' },
+      { symbol: 'AMZN', name: 'Amazon.com Inc.' }
+    ];
+
+    try {
+      // Fetch stocks one by one with delay to avoid overwhelming the API
+      const validStocks: Stock[] = [];
+      
+      for (const company of companies) {
+        if (rateLimitHit) break; // Stop if rate limit is hit
         
-        const results = await Promise.all(stockPromises);
-        const validStocks = results.filter(stock => stock !== null) as Stock[];
+        const stockData = await fetchStockData(company.symbol, company.name);
+        if (stockData) {
+          validStocks.push(stockData);
+        }
         
+        // Add delay between requests to be respectful to the API
+        if (validStocks.length < companies.length) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+      
+      if (validStocks.length > 0) {
         setStocks(validStocks);
+        setLastRefresh(new Date());
         
-        if (validStocks.length > 0) {
+        if (showToast) {
           toast.success("Real-time market data loaded", {
             description: `Updated ${validStocks.length} stock prices`
           });
         }
-      } catch (error) {
-        console.error('Error loading stocks:', error);
+      }
+    } catch (error) {
+      console.error('Error loading stocks:', error);
+      if (showToast) {
         toast.error("Failed to load market data", {
           description: "Using cached data instead"
         });
-      } finally {
-        setIsLoading(false);
       }
-    };
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-    loadStocks();
+  // Manual refresh function
+  const handleRefresh = () => {
+    if (!rateLimitHit) {
+      loadStocks(true);
+    } else {
+      toast.error("Rate limit reached", {
+        description: "Please wait or upgrade your API plan"
+      });
+    }
+  };
+
+  // Load initial data
+  useEffect(() => {
+    loadStocks(false);
   }, [apiKey]);
 
-  // Refresh data every 30 seconds when API key is available
+  // Auto-refresh every 5 minutes (instead of 30 seconds) to conserve API calls
   useEffect(() => {
-    if (!apiKey) return;
+    if (!apiKey || rateLimitHit) return;
 
-    const interval = setInterval(async () => {
-      const companies = [
-        { symbol: 'AAPL', name: 'Apple Inc.' },
-        { symbol: 'GOOGL', name: 'Alphabet Inc.' },
-        { symbol: 'MSFT', name: 'Microsoft Corp.' },
-        { symbol: 'TSLA', name: 'Tesla Inc.' },
-        { symbol: 'NVDA', name: 'NVIDIA Corp.' },
-        { symbol: 'AMZN', name: 'Amazon.com Inc.' }
-      ];
-
-      try {
-        const stockPromises = companies.map(company => 
-          fetchStockData(company.symbol, company.name)
-        );
-        
-        const results = await Promise.all(stockPromises);
-        const validStocks = results.filter(stock => stock !== null) as Stock[];
-        
-        if (validStocks.length > 0) {
-          setStocks(validStocks);
-        }
-      } catch (error) {
-        console.error('Error refreshing stock data:', error);
-      }
-    }, 30000); // Refresh every 30 seconds
+    const interval = setInterval(() => {
+      loadStocks(false);
+    }, 300000); // 5 minutes
 
     return () => clearInterval(interval);
-  }, [apiKey]);
+  }, [apiKey, rateLimitHit]);
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -249,10 +276,34 @@ export const MarketOverview: React.FC<MarketOverviewProps> = ({ onCompanySelect 
           <CardTitle className="text-white flex items-center space-x-2">
             <BarChart className="h-5 w-5 text-blue-400" />
             <span>Market Overview</span>
-            <Badge className={`${apiKey ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>
-              {apiKey ? 'Live Data' : 'Demo Mode'}
+            <Badge className={`${
+              apiKey && !rateLimitHit 
+                ? 'bg-green-500/20 text-green-400' 
+                : rateLimitHit 
+                  ? 'bg-red-500/20 text-red-400'
+                  : 'bg-yellow-500/20 text-yellow-400'
+            }`}>
+              {apiKey && !rateLimitHit ? 'Live Data' : rateLimitHit ? 'Rate Limited' : 'Demo Mode'}
             </Badge>
+            {apiKey && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleRefresh}
+                disabled={isLoading || rateLimitHit}
+                className="ml-auto bg-slate-700 border-slate-600 text-white hover:bg-slate-600"
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                Refresh
+              </Button>
+            )}
           </CardTitle>
+          {apiKey && (
+            <p className="text-xs text-slate-400">
+              Last updated: {lastRefresh.toLocaleTimeString()}
+              {rateLimitHit && " • Rate limit reached"}
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-3 gap-4 mb-6">
