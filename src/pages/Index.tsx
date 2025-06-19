@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { SearchBar } from '../components/SearchBar';
 import { SearchResults } from '../components/SearchResults';
@@ -11,6 +10,9 @@ import { AuthModal } from '../components/AuthModal';
 import { Button } from '@/components/ui/button';
 import { LogOut, User } from 'lucide-react';
 import { toast } from 'sonner';
+import { HeroSection } from '../components/HeroSection';
+import { MarketHeatMap } from '../components/MarketHeatMap';
+import { MarketTicker } from '../components/MarketTicker';
 
 interface SearchResult {
   symbol: string;
@@ -200,7 +202,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800">
       {/* Header */}
-      <header className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm">
+      <header className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
@@ -250,7 +252,17 @@ const Index = () => {
         </div>
       </header>
 
+      {/* Market Ticker */}
+      <MarketTicker />
+
       <div className="container mx-auto px-6 py-6">
+        {/* Show Hero Section only when no search or company is selected */}
+        {!selectedCompany && !showSearchResults && (
+          <div className="mb-8">
+            <HeroSection />
+          </div>
+        )}
+
         <div className="grid grid-cols-12 gap-6">
           {/* Left Sidebar - Agent System */}
           <div className="col-span-12 lg:col-span-3">
@@ -272,7 +284,10 @@ const Index = () => {
                 isLoading={isLoading}
               />
             ) : (
-              <MarketOverview onCompanySelect={handleCompanySelect} />
+              <div className="space-y-6">
+                <MarketOverview onCompanySelect={handleCompanySelect} />
+                <MarketHeatMap />
+              </div>
             )}
           </div>
 
