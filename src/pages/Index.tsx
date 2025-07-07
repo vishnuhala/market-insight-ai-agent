@@ -6,6 +6,7 @@ import { CompanyDetail } from '../components/CompanyDetail';
 import { AgentSystem } from '../components/AgentSystem';
 import { PredictionPanel } from '../components/PredictionPanel';
 import { RealTimeData } from '../components/RealTimeData';
+import { N8nWorkflows } from '../components/N8nWorkflows';
 import { AuthModal } from '../components/AuthModal';
 import { Button } from '@/components/ui/button';
 import { LogOut, User } from 'lucide-react';
@@ -294,6 +295,7 @@ const Index = () => {
           {/* Right Sidebar */}
           <div className="col-span-12 lg:col-span-3 space-y-6">
             <RealTimeData />
+            <N8nWorkflows selectedCompany={selectedCompany} />
             <PredictionPanel selectedCompany={selectedCompany} />
           </div>
         </div>
