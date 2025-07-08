@@ -120,49 +120,51 @@ export const PredictionPanel: React.FC<PredictionPanelProps> = ({ selectedCompan
 
   return (
     <div className="space-y-4">
-      {/* AI Predictions - Horizontal Layout */}
-      <Card className="bg-slate-800/50 border-slate-700">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-white flex items-center space-x-2 text-lg">
-            <Brain className="h-5 w-5 text-purple-400" />
-            <span>AI Predictions</span>
-            <Badge className="bg-purple-500/20 text-purple-400">LangGraph</Badge>
+      {/* AI Predictions Card */}
+      <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-white flex items-center justify-between text-lg">
+            <div className="flex items-center space-x-2">
+              <Brain className="h-5 w-5 text-purple-400" />
+              <span>AI Predictions</span>
+            </div>
+            <Badge className="bg-purple-500/20 text-purple-400 text-xs">LangGraph</Badge>
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
           {selectedCompany ? (
             <>
               <div className="text-center mb-4">
-                <p className="text-slate-400 text-sm">Analyzing {selectedCompany}</p>
-                <Badge className="bg-blue-500/20 text-blue-400 mt-1 text-xs">
+                <p className="text-slate-300 font-medium">Analyzing {selectedCompany}</p>
+                <Badge className="bg-blue-500/20 text-blue-400 mt-2 text-xs">
                   Multi-Model Ensemble
                 </Badge>
               </div>
 
-              {/* Horizontal Predictions Grid */}
-              <div className="grid grid-cols-3 gap-3 mb-4">
+              {/* Predictions Grid */}
+              <div className="grid grid-cols-1 gap-3">
                 {Object.entries(predictions).map(([period, pred]) => (
-                  <div key={period} className="p-3 bg-slate-900/50 rounded-lg border border-slate-700">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-white font-medium text-sm capitalize">
+                  <div key={period} className="p-4 bg-slate-900/60 rounded-lg border border-slate-600/50 hover:border-slate-500/50 transition-colors">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-white font-medium capitalize">
                         {period.replace(/([A-Z])/g, ' $1')}
                       </span>
                       {getDirectionIcon(pred.direction)}
                     </div>
                     
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-400 text-xs">Confidence</span>
-                        <span className={`font-medium text-xs ${getConfidenceColor(pred.confidence)}`}>
+                        <span className="text-slate-400 text-sm">Confidence</span>
+                        <span className={`font-bold ${getConfidenceColor(pred.confidence)}`}>
                           {pred.confidence}%
                         </span>
                       </div>
                       
-                      <Progress value={pred.confidence} className="h-1" />
+                      <Progress value={pred.confidence} className="h-2 bg-slate-700" />
                       
                       <div className="flex items-center justify-between">
-                        <span className="text-slate-400 text-xs">Change</span>
-                        <span className={`font-medium text-xs ${
+                        <span className="text-slate-400 text-sm">Expected Change</span>
+                        <span className={`font-bold ${
                           pred.change >= 0 ? 'text-green-400' : 'text-red-400'
                         }`}>
                           {pred.change >= 0 ? '+' : ''}{pred.change.toFixed(1)}%
@@ -173,10 +175,13 @@ export const PredictionPanel: React.FC<PredictionPanelProps> = ({ selectedCompan
                 ))}
               </div>
 
-              {/* Company-specific insights - Compact */}
-              <div className="p-3 bg-gradient-to-r from-blue-900/20 to-purple-900/20 rounded-lg border border-blue-500/20">
-                <p className="text-blue-400 text-xs font-medium mb-1">AI Insight</p>
-                <p className="text-slate-300 text-xs">
+              {/* AI Insight */}
+              <div className="p-4 bg-gradient-to-r from-blue-900/30 to-purple-900/30 rounded-lg border border-blue-500/30">
+                <div className="flex items-center space-x-2 mb-2">
+                  <Brain className="h-4 w-4 text-blue-400" />
+                  <p className="text-blue-400 font-medium text-sm">AI Insight</p>
+                </div>
+                <p className="text-slate-300 text-sm leading-relaxed">
                   {selectedCompany === 'TSLA' && "High volatility expected due to EV market dynamics and regulatory changes."}
                   {selectedCompany === 'AAPL' && "Stable growth pattern with seasonal iPhone launch cycles affecting predictions."}
                   {selectedCompany === 'GOOGL' && "AI developments and advertising market trends driving forecast models."}
@@ -188,80 +193,77 @@ export const PredictionPanel: React.FC<PredictionPanelProps> = ({ selectedCompan
               </div>
             </>
           ) : (
-            <div className="text-center py-6">
-              <Target className="h-8 w-8 text-slate-600 mx-auto mb-2" />
-              <p className="text-slate-400 text-sm">Select a company to view predictions</p>
+            <div className="text-center py-8">
+              <Target className="h-12 w-12 text-slate-600 mx-auto mb-3" />
+              <p className="text-slate-400">Select a company to view predictions</p>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Horizontal Layout for Models and Sentiment */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* AI Models Status - Compact */}
-        <Card className="bg-slate-800/50 border-slate-700">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-white flex items-center space-x-2 text-sm">
-              <Zap className="h-4 w-4 text-yellow-400" />
-              <span>AI Models</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {aiModels.map((model, index) => (
-              <div key={index} className="p-2 bg-slate-900/50 rounded-lg">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-white text-xs font-medium truncate pr-2">{model.name}</span>
-                  <Badge className={`text-xs ${
-                    model.status === 'active' 
-                      ? 'bg-green-500/20 text-green-400'
-                      : 'bg-orange-500/20 text-orange-400'
-                  }`}>
-                    {model.status}
-                  </Badge>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <span className="text-slate-400 text-xs">Accuracy</span>
-                  <span className="text-white text-xs font-medium">{model.accuracy.toFixed(0)}%</span>
-                </div>
-                
-                <Progress value={model.accuracy} className="h-1 mt-1" />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* Market Sentiment - Compact */}
-        <Card className="bg-slate-800/50 border-slate-700">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-white text-sm">Market Sentiment</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400 text-xs">Fear & Greed Index</span>
-                <span className="text-green-400 font-medium text-xs">68 (Greed)</span>
+      {/* AI Models Status */}
+      <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-white flex items-center space-x-2">
+            <Zap className="h-5 w-5 text-yellow-400" />
+            <span>AI Models</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {aiModels.map((model, index) => (
+            <div key={index} className="p-3 bg-slate-900/60 rounded-lg border border-slate-600/50 hover:border-slate-500/50 transition-colors">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-white font-medium text-sm">{model.name}</span>
+                <Badge className={`text-xs ${
+                  model.status === 'active' 
+                    ? 'bg-green-500/20 text-green-400 border-green-500/30'
+                    : 'bg-orange-500/20 text-orange-400 border-orange-500/30'
+                }`}>
+                  {model.status}
+                </Badge>
               </div>
               
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400 text-xs">Social Sentiment</span>
-                <span className="text-blue-400 font-medium text-xs">
-                  {selectedCompany === 'TSLA' ? 'Very Bullish' : 
-                   selectedCompany === 'AAPL' ? 'Bullish' : 
-                   selectedCompany ? 'Neutral' : 'Bullish'}
-                </span>
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-slate-400 text-xs">Accuracy</span>
+                <span className="text-white font-bold text-sm">{model.accuracy.toFixed(0)}%</span>
               </div>
               
-              <div className="flex justify-between items-center">
-                <span className="text-slate-400 text-xs">News Sentiment</span>
-                <span className="text-green-400 font-medium text-xs">
-                  {selectedCompany === 'META' ? 'Mixed' : 'Positive'}
-                </span>
-              </div>
+              <Progress value={model.accuracy} className="h-2 bg-slate-700" />
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          ))}
+        </CardContent>
+      </Card>
+
+      {/* Market Sentiment */}
+      <Card className="bg-slate-800/50 border-slate-700 backdrop-blur-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-white">Market Sentiment</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3">
+            <div className="flex justify-between items-center p-3 bg-slate-900/60 rounded-lg">
+              <span className="text-slate-300 font-medium">Fear & Greed Index</span>
+              <span className="text-green-400 font-bold">68 (Greed)</span>
+            </div>
+            
+            <div className="flex justify-between items-center p-3 bg-slate-900/60 rounded-lg">
+              <span className="text-slate-300 font-medium">Social Sentiment</span>
+              <span className="text-blue-400 font-bold">
+                {selectedCompany === 'TSLA' ? 'Very Bullish' : 
+                 selectedCompany === 'AAPL' ? 'Bullish' : 
+                 selectedCompany ? 'Neutral' : 'Bullish'}
+              </span>
+            </div>
+            
+            <div className="flex justify-between items-center p-3 bg-slate-900/60 rounded-lg">
+              <span className="text-slate-300 font-medium">News Sentiment</span>
+              <span className="text-green-400 font-bold">
+                {selectedCompany === 'META' ? 'Mixed' : 'Positive'}
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

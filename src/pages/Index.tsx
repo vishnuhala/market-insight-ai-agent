@@ -255,7 +255,7 @@ const Index = () => {
       {/* Market Ticker */}
       <MarketTicker />
 
-      <div className="container mx-auto px-6 py-6">
+      <div className="container mx-auto px-4 sm:px-6 py-6">
         {/* Show Hero Section only when no search or company is selected */}
         {!selectedCompany && !showSearchResults && (
           <div className="mb-8">
@@ -263,14 +263,17 @@ const Index = () => {
           </div>
         )}
 
-        <div className="grid grid-cols-12 gap-6">
+        {/* Updated Grid Layout with Better Spacing */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
           {/* Left Sidebar - Agent System */}
-          <div className="col-span-12 lg:col-span-3">
-            <AgentSystem searchQuery={searchQuery} />
+          <div className="xl:col-span-3">
+            <div className="sticky top-24">
+              <AgentSystem searchQuery={searchQuery} />
+            </div>
           </div>
 
-          {/* Main Content */}
-          <div className="col-span-12 lg:col-span-6">
+          {/* Main Content Area */}
+          <div className="xl:col-span-6 space-y-6">
             {selectedCompany ? (
               <CompanyDetail 
                 symbol={selectedCompany} 
@@ -286,15 +289,20 @@ const Index = () => {
             ) : (
               <div className="space-y-6">
                 <MarketOverview onCompanySelect={handleCompanySelect} />
-                <MarketHeatMap />
+                {/* Heat Map with Proper Spacing */}
+                <div className="w-full">
+                  <MarketHeatMap />
+                </div>
               </div>
             )}
           </div>
 
-          {/* Right Sidebar */}
-          <div className="col-span-12 lg:col-span-3 space-y-6">
-            <RealTimeData />
-            <PredictionPanel selectedCompany={selectedCompany} />
+          {/* Right Sidebar with Fixed Layout */}
+          <div className="xl:col-span-3">
+            <div className="sticky top-24 space-y-6">
+              <RealTimeData />
+              <PredictionPanel selectedCompany={selectedCompany} />
+            </div>
           </div>
         </div>
       </div>
